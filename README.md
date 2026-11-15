@@ -1,39 +1,41 @@
-# jPDFRsc — Advanced PDF Resource & Forensic Explorer
+# jPDFRsc
 
-**Version 0.4.0** · Windows desktop · Python / PySide6 / pikepdf / PyMuPDF / Pillow
+**PDF Resource Explorer** · Version 0.4.0
 
-jPDFRsc is a desktop application for authorized PDF structure inspection, resource inventory, stream analysis, controlled editing and session reporting. It is inspired by low-level executable resource browsers, but operates on the PDF object model.
+jPDFRsc is a Windows desktop application for inspecting PDF structure and resources, examining indirect objects and streams, and making controlled changes to PDF files. It is built with Python, PySide6, pikepdf, PyMuPDF and Pillow.
 
-> **Forensic caution:** This is a development tool, not a certified forensic suite. It does not guarantee evidentiary chain of custody, validate signatures, or promise byte-for-byte preservation. Always preserve the original, work on a verified copy, record acquisition hashes independently where required, and save edits to a new file. Embedded content is untrusted data.
+> **Important:** jPDFRsc is an inspection and editing utility, not a certified digital-forensics platform. It does not establish chain of custody, validate digital signatures, or guarantee byte-for-byte preservation. Keep the original file unchanged, work on a verified copy, and record acquisition hashes separately when required. Treat all embedded content as untrusted.
 
-## Current capabilities
+## Features
 
-- Dark and light themes.
-- PDF catalog, page tree and indirect object explorer.
-- Object dictionary inspector with object/generation references.
-- Add, edit and remove dictionary entries using a safe scalar parser (no `eval`).
-- Create new indirect dictionary objects, shallow-clone dictionaries, and deep-clone reachable indirect subgraphs with reference remapping.
-- Attach existing indirect objects to dictionary keys. Arbitrary xref-slot deletion remains unsupported by design.
-- Snapshot-based undo/redo (up to 30 in-memory checkpoints).
-- Resource inventory for fonts, XObjects, images, color spaces, patterns, shadings, graphics states and properties.
-- Image resource export and replacement (replacement normalizes to 8-bit RGB; masks, alpha, ICC profiles and specialized color spaces are not retained).
-- Embedded font-program extraction when a font descriptor contains `/FontFile`, `/FontFile2` or `/FontFile3`.
-- Raw and decoded stream export, stream hashing and a hex dump viewer.
-- Stream replacement with a normalized unfiltered stream payload.
-- Parsed page content-stream operator listing and frequency counts.
-- Original-versus-current indirect-object fingerprint comparison.
-- Catalog-rooted reference graph with inbound/outbound references, reachability, orphan candidates and cycle detection.
-- Deep indirect-object graph cloning with reference remapping and memoized cycle handling.
-- Attach an existing indirect object reference to a selected dictionary key.
-- Structural validation using pikepdf/qpdf diagnostics.
-- Consistent error dialogs with technical traceback and rotating-independent application log at `%LOCALAPPDATA%\jPDFRsc\logs\jpdfrsc.log`.
-- Exportable reference graph report and double-click navigation from graph nodes to the object inspector.
-- Forensic review report with document summary, object hashes, resource inventory, configured active-content indicators and session operations.
-- Page preview, text search, active-content indicators and operation log.
+- PDF catalog, page tree and indirect-object browser.
+- Object dictionary inspection, including object and generation references.
+- Add, edit and remove dictionary entries using a restricted scalar-value parser.
+- Create indirect dictionary objects; shallow-clone dictionaries; deep-clone reachable indirect object graphs with reference remapping.
+- Attach existing indirect object references to dictionary keys.
+- Snapshot-based undo and redo, with up to 30 in-memory checkpoints.
+- Resource inventory covering fonts, XObjects, images, color spaces, patterns, shadings, graphics states and properties.
+- Export and replace image resources.
+- Extract embedded font programs when recognized font streams are present.
+- Export raw or decoded streams; calculate stream hashes; inspect data in a hex viewer.
+- Replace stream data.
+- Inspect page content-stream operators and their frequencies.
+- Compare original and current indirect-object fingerprints.
+- Explore catalog-rooted references, including inbound and outbound references, reachability, orphan candidates and cycles.
+- Run structural checks using pikepdf/qpdf diagnostics.
+- Preview pages and search document text.
+- Identify active-content entries for manual review.
+- Export reference-graph and document-review reports.
+- Record editing operations and application errors in a log file.
 
-## Install and run (Windows 10/11, x64)
+## Requirements
 
-Python 3.11 is recommended. Python 3.10–3.12 should generally work depending on available binary wheels.
+- Windows 10 or 11 (64-bit)
+- Python 3.11 recommended; Python 3.10–3.12 may work depending on available binary wheels
+
+## Install and run
+
+Open PowerShell in the project directory:
 
 ```powershell
 py -3.11 -m venv .venv
@@ -50,79 +52,58 @@ pip install pytest
 pytest -q
 ```
 
-## Build a Windows application folder
+## Build for Windows
+
+Install PyInstaller in the active environment, then run:
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
 pip install pyinstaller
 pyinstaller --noconfirm --clean --windowed --name jPDFRsc `
   --collect-all pikepdf --collect-all fitz --collect-all PySide6 `
   --collect-all PIL main.py
 ```
 
-The recommended onedir executable is `dist\jPDFRsc\jPDFRsc.exe`. Test the build on a clean Windows machine before distributing it. A one-file build is possible with `--onefile`, but native Qt and PDF libraries make onedir packaging easier to troubleshoot.
+The executable is created at `dist\jPDFRsc\jPDFRsc.exe`. The onedir build is recommended. Test the packaged application on a clean Windows machine before distribution.
 
-## Project layout
+## Project structure
 
 ```text
 jpdfrsc/
   core/
-    reference_graph.py  Indirect-object graph, reachability, cycle detection, graph report
-    advanced.py       Hex dumps, stream hashes, content parsing, image/font inventory, diff, report
-    forensics.py      Resource inventory and active-content indicators
-    history.py        Snapshot undo/redo
-    pdf_document.py   PDF lifecycle and controlled mutations
-    rendering.py      PyMuPDF page rendering
+    advanced.py
+    forensics.py
+    history.py
+    pdf_document.py
+    reference_graph.py
+    rendering.py
   ui/
-    main_window.py   PySide6 application interface
-    object_tree.py   PDF object and page tree
+    main_window.py
+    object_tree.py
 main.py
 requirements.txt
 tests/
 ```
 
-## Editing model and limitations
+## Editing behavior and limitations
 
-- **Undo/redo:** Before a supported mutation, the application serializes an in-memory snapshot. Undo/redo restores a snapshot and reopens the PDF model. Object handles selected before undo/redo become stale; the interface refreshes the views.
-- **Dictionary cloning:** Shallow clone remains available for a fast dictionary copy. Deep clone recursively copies the selected object and its reachable indirect descendants, remapping references inside the copied graph. Stream payloads are decoded and rewritten without preserving original filter encoding; byte identity is not guaranteed.
-- **Deletion:** The app intentionally does not remove arbitrary xref/object-table slots. It removes a selected dictionary key/reference instead, avoiding unsafe dangling references. Physical xref-slot deletion and automatic garbage collection remain unsupported; review orphan candidates manually.
-- **Scalar editor:** Supports PDF names, literal strings, booleans, null, integers and decimals. It does not currently parse arbitrary arrays, dictionaries, hex strings or indirect references from text.
-- **Stream replacement:** The selected stream is replaced with unfiltered bytes. For specialized streams (for example content streams, fonts, compressed data, object streams or image masks), validate the result carefully. The app does not infer a correct filter pipeline for arbitrary binary input.
-- **Image replacement:** Replaces a page's selected `/XObject` image resource with raw 8-bit DeviceRGB samples. It does not preserve transparency, soft masks, color profiles, indexed color, bitonal encoding or image interpolation metadata. Review the rendered page after replacement.
-- **Font extraction:** Only extracts a font program when a direct `/FontDescriptor` contains a recognized font stream. Type 0 descendant font traversal and CFF-specific interpretation may need further work.
-- **Diff:** Fingerprints compare indirect object representations and raw stream bytes. This is an object-level diagnostic, not a byte-level file diff; a full rewrite can change serialization without changing semantic content.
-- **Signatures:** Any edit or save may invalidate digital signatures. Signature validation is not implemented.
-- **Active content:** `/OpenAction`, `/AA`, `/JavaScript`, `/JS`, `/Launch`, `/EmbeddedFiles` and `/RichMedia` are indicators for manual review, not proof of maliciousness. jPDFRsc does not execute embedded scripts.
+- **Undo and redo:** Supported changes create an in-memory PDF snapshot. Undo and redo restore a snapshot and reopen the document model; previously selected object handles may become stale, so views are refreshed.
+- **Dictionary cloning:** A shallow clone copies a dictionary. A deep clone copies the selected indirect object and reachable indirect descendants, remapping references in the copied graph. Stream payloads are decoded and rewritten; original filter encoding and byte identity are not preserved.
+- **Object deletion:** Arbitrary cross-reference-table slots are not deleted. The application can remove dictionary keys and references, but does not perform physical xref-slot deletion or automatic garbage collection. Unreachable objects are reported as orphan candidates for manual review.
+- **Scalar editor:** Supports PDF names, literal strings, booleans, null, integers and decimals. It does not parse arbitrary arrays, dictionaries, hex strings or indirect references from text.
+- **Stream replacement:** Replacement data is written as an unfiltered stream. For content streams, fonts, compressed data, object streams, image masks and other specialized streams, validate the result carefully. The application does not infer a suitable filter pipeline for arbitrary binary input.
+- **Image replacement:** Replacements use 8-bit DeviceRGB samples. Transparency, soft masks, color profiles, indexed or bitonal color, and image interpolation metadata are not retained. Inspect the rendered page after replacement.
+- **Font extraction:** Extraction is supported when a font descriptor contains a recognized `/FontFile`, `/FontFile2` or `/FontFile3` stream. Type 0 descendant-font traversal and some CFF-specific details may require additional handling.
+- **Object comparison:** Fingerprints compare indirect-object representations and raw stream bytes. This is not a byte-level comparison of complete PDF files; a rewrite may change serialization without changing document meaning.
+- **Digital signatures:** Editing or saving may invalidate existing signatures. Signature validation is not implemented.
+- **Active content:** Entries such as `/OpenAction`, `/AA`, `/JavaScript`, `/JS`, `/Launch`, `/EmbeddedFiles` and `/RichMedia` are indicators for manual inspection, not proof of malicious activity. jPDFRsc does not execute embedded scripts.
 
-## Reference graph behavior
+## Reference graph
 
-- The graph starts at the document catalog (`/Root`) and follows nested dictionaries and arrays.
-- Each indirect object is represented by its object number and generation number.
-- Inbound/outbound counts are based on discovered indirect-reference edges; direct nested containers are represented in the edge path.
-- Reachability is catalog-rooted. Unreachable indirect objects are labeled **orphan candidates**, not automatically disposable objects.
-- Strongly connected components identify indirect-reference cycles. Cycles are not inherently invalid in a PDF object graph.
-- Traversal limits (512 nested direct-container levels and 2,000,000 edges) guard against pathological structures.
-- The graph is an analysis view. jPDFRsc intentionally does not delete raw xref slots or perform automatic garbage collection.
+The reference graph starts at the document catalog (`/Root`) and follows nested dictionaries and arrays. Indirect objects are identified by object number and generation. Reachability is catalog-rooted; unreachable objects are labeled **orphan candidates**, not automatically disposable objects. Strongly connected components identify reference cycles, which are not necessarily invalid in a PDF.
 
-## Suggested next engineering milestones
-
-1. Reference-aware deep clone with cycle-safe remapping and explicit shared-reference policy.
-2. Safe detach planner that previews every changed parent path before a user-approved edit.
-3. Dedicated font panel for Type 0 descendants, CID fonts, CMaps and font-program metadata.
-4. Image preview with masks/color-space interpretation and replacement options.
-5. Content stream token editor with syntax-aware operator validation.
-6. Signature inspection and incremental-save awareness.
-7. Structured JSON forensic report and optional read-only evidence workspace.
+Traversal is limited to 512 nested direct-container levels and 2,000,000 edges to guard against unusually complex or malformed files. The graph is an inspection view and does not delete objects or rewrite the cross-reference table.
 
 ## Safety
 
-Use only with files you are authorized to inspect or modify. Never execute or automatically open extracted attachments. Save modifications to a separate output file and retain the original unchanged.
+Use jPDFRsc only with files you are authorized to inspect or modify. Do not execute or automatically open extracted attachments. PDF parsing libraries may be exposed to malformed-file attacks, so avoid opening untrusted documents on a sensitive workstation. Save modifications to a separate output file and retain the original unchanged.
 
-
-## v0.4 editing safety notes
-
-Deep cloning recursively copies the selected indirect object and reachable indirect descendants, remapping references within the copied graph. Stream data is decoded and rewritten without the original filter chain; the result is not byte-identical to the source stream. If decoding fails, the clone is aborted and the document is restored to its pre-operation snapshot. Direct-container cycles and excessive nesting are rejected.
-
-Reference attachment modifies a dictionary key to point at an existing indirect object. This is a low-level operation and can make a PDF semantically invalid; use the structural validator, inspect the reference graph, and save to a new file. Orphan candidates are informational only. jPDFRsc does not physically delete arbitrary xref entries.
-
-Errors are displayed with actionable context and written to `jpdfrsc.log`. Avoid opening untrusted PDFs on a sensitive workstation; parsing libraries can still be exposed to malformed-file attacks.
